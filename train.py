@@ -33,7 +33,7 @@ def main():
     ap.add_argument('-k', '--mrr_k', type=int, default=10, help='Compute MRR@k')
     ap.add_argument('--test', action='store_true', help='Also compute the metrics on the test set')
     ap.add_argument('--ckpt', default='ckpt', help='Where to save checkpoints')
-    ap.add_argument('--logfile', default='train.csv', help='Training fog file')
+    ap.add_argument('--logfile', default='train.csv', help='Training log file')
     ap.add_argument('--glove_cache', help='Word embeddings cache directory')
     ap.add_argument('--num_workers', type=int, default=0, help='Number of DataLoader workers')
     ap.add_argument('--random_seed', type=int, default=12345, help='Random seed')
