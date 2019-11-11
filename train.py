@@ -72,7 +72,7 @@ def main():
         test_queries = read_pkl(test_queries_pkl)
         test_dataset = TestDataset(word_to_id, docs, test_queries, test_set)
         test_dataloader = DataLoader(test_dataset, args.valid_batch_size, num_workers=args.num_workers,
-                                    collate_fn=test_dataset.collate_fn, pin_memory=True)
+                                     collate_fn=test_dataset.collate_fn, pin_memory=True)
 
     if torch.cuda.is_available():
         device = 'cuda'

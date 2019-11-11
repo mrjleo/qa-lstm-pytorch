@@ -74,7 +74,7 @@ optional arguments:
 
 For example, training a model on the preprocessed FiQA dataset can be done using
 ```
-python3 train.py ~/fiqa_preprocessed -e 10 -bs 20 -m 0.2 -hd 256 -d 0.5 --ckpt ~/fiqa_ckpt --logfile ~/fiqa.csv -vbs 64 --test --glove_cache ~/torchtext_cache
+python3 train.py ~/fiqa_preprocessed -e 10 -bs 32 -m 0.2 -hd 256 -d 0.5 --ckpt ~/fiqa_ckpt --logfile ~/fiqa.csv -vbs 64 --test --glove_cache ~/torchtext_cache
 ```
 
-This command trains for 20 epochs and reports metrics on dev- and testset after every epoch.
+This command trains for 10 epochs and reports metrics on dev- and testset after every epoch.
