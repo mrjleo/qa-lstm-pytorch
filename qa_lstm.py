@@ -123,8 +123,7 @@ class QA_LSTM(torch.nn.Module):
         query_outputs = self._encode(queries, query_lengths)
         query_outputs_pooled = self._max_pool(query_outputs, query_lengths)
         pos_doc_outputs = self._encode(pos_docs, pos_doc_lengths)
-        pos_doc_outputs_pooled = self._max_pool(pos_doc_outputs, pos_doc_lengths)
-    
+
         attention = self._attention(query_outputs_pooled, pos_doc_outputs, pos_doc_lengths)
         attention_pooled = self._max_pool(attention, pos_doc_lengths)
 

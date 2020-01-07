@@ -1,23 +1,18 @@
+import json
+
+import h5py
 import torch
 
 
 class TrainDataset(torch.utils.data.Dataset):
-    def __init__(self, word_to_id, docs, train_queries, train_set, num_neg_examples):
-        self.word_to_id = word_to_id
-        self.docs = docs
-        self.train_queries = train_queries
-        self.train_set = train_set
-        self.num_neg_examples = num_neg_examples
-    
-    def _get_query_tensor(self, query):
-        # 1 is the ID for [UNK]
-        result = [self.word_to_id.get(w, 1) for w in query]
-        return torch.LongTensor(result), len(result)
-
-    def _get_doc_tensor(self, doc):
-        # 1 is the ID for [UNK]
-        result = [self.word_to_id.get(w, 1) for w in doc]
-        return torch.LongTensor(result), len(result)
+    def __init__(self, train_file):
+        self.fp = h5py.File(train_file, 'r')
+        self.queries = self.fp['queries']
+        self.pos_docs = self.fp['pos_docs']
+        self.neg_docs = self.fp['neg_docs']
+        self.word_to_index = json.loads(self.queries.attrs['w2i'])
+        self.index_to_word = json.loads(self.queries.attrs['i2w'])
+        self.num_neg_examples = self.neg_docs.attrs['num_neg_examples']
 
     def __getitem__(self, index):
         """
@@ -27,20 +22,17 @@ class TrainDataset(torch.utils.data.Dataset):
             * a list of negative document tensors
             * a list of negative document lengths
         """
-        q_id, pos_doc_id, neg_doc_ids = self.train_set[index]
-        query_t, _ = self._get_query_tensor(self.train_queries[q_id])
-        pos_doc_t, _ = self._get_doc_tensor(self.docs[pos_doc_id])
+        query = torch.LongTensor(self.queries[index])
+        pos_doc = torch.LongTensor(self.pos_docs[index])
+        neg_docs, neg_doc_lengths = [], []
+        for i in range(self.num_neg_examples):
+            neg_doc = self.neg_docs[index * self.num_neg_examples + i]
+            neg_docs.append(torch.LongTensor(neg_doc))
+            neg_doc_lengths.append(len(neg_doc))
+        return query, pos_doc, neg_docs, neg_doc_lengths
 
-        neg_docs_t, neg_doc_lengths = [], []
-        for neg_doc_id in neg_doc_ids:
-            neg_doc_t, neg_doc_length = self._get_doc_tensor(self.docs[neg_doc_id])
-            neg_docs_t.append(neg_doc_t)
-            neg_doc_lengths.append(neg_doc_length)
-
-        return query_t, pos_doc_t, neg_docs_t, neg_doc_lengths
-        
     def __len__(self):
-        return len(self.train_set)
+        return len(self.queries)
 
     def collate_fn(self, batch):
         """
@@ -60,7 +52,7 @@ class TrainDataset(torch.utils.data.Dataset):
             pos_doc_lengths.append(len(b_pos_doc))
             neg_docs.extend(b_neg_docs)
             neg_doc_lengths.extend(b_neg_doc_lengths)
-        
+
         queries = torch.nn.utils.rnn.pad_sequence(queries, batch_first=True)
         query_lengths = torch.LongTensor(query_lengths)
         pos_docs = torch.nn.utils.rnn.pad_sequence(pos_docs, batch_first=True)
@@ -73,23 +65,19 @@ class TrainDataset(torch.utils.data.Dataset):
         neg_doc_lengths = neg_doc_lengths.view(batch_size, self.num_neg_examples)
         return queries, query_lengths, pos_docs, pos_doc_lengths, neg_docs, neg_doc_lengths
 
+    def __del__(self):
+        self.fp.close()
+
 
 class TestDataset(torch.utils.data.Dataset):
-    def __init__(self, word_to_id, docs, test_queries, test_set):
-        self.word_to_id = word_to_id
-        self.docs = docs
-        self.test_queries = test_queries
-        self.test_set = test_set
-
-    def _get_query_tensor(self, query):
-        # 1 is the ID for [UNK]
-        result = [self.word_to_id.get(w, 1) for w in query]
-        return torch.LongTensor(result), len(result)
-
-    def _get_doc_tensor(self, doc):
-        # 1 is the ID for [UNK]
-        result = [self.word_to_id.get(w, 1) for w in doc]
-        return torch.LongTensor(result), len(result)
+    def __init__(self, test_file):
+        self.fp = h5py.File(test_file, 'r')
+        self.q_ids = self.fp['q_ids']
+        self.queries = self.fp['queries']
+        self.docs = self.fp['docs']
+        self.labels = self.fp['labels']
+        self.word_to_index = json.loads(self.queries.attrs.get('w2i'))
+        self.index_to_word = json.loads(self.queries.attrs.get('i2w'))
 
     def __getitem__(self, index):
         """
@@ -101,13 +89,12 @@ class TestDataset(torch.utils.data.Dataset):
             * the query ID
             * the label
         """
-        q_id, doc_id, label = self.test_set[index]
-        query_t, query_len = self._get_query_tensor(self.test_queries[q_id])
-        doc_t, doc_len = self._get_doc_tensor(self.docs[doc_id])
-        return query_t, query_len, doc_t, doc_len, q_id, label
+        query = torch.LongTensor(self.queries[index])
+        doc = torch.LongTensor(self.docs[index])
+        return query, len(query), doc, len(doc), self.q_ids[index], self.labels[index]
 
     def __len__(self):
-        return len(self.test_set)
+        return len(self.queries)
 
     def collate_fn(self, batch):
         """
@@ -127,9 +114,12 @@ class TestDataset(torch.utils.data.Dataset):
             doc_lengths.append(b_doc_len)
             q_ids.append(b_q_id)
             labels.append(b_label)
-        
+
         queries = torch.nn.utils.rnn.pad_sequence(queries, batch_first=True)
         query_lengths = torch.LongTensor(query_lengths)
         docs = torch.nn.utils.rnn.pad_sequence(docs, batch_first=True)
         doc_lengths = torch.LongTensor(doc_lengths)
         return queries, query_lengths, docs, doc_lengths, q_ids, labels
+
+    def __del__(self):
+        self.fp.close()

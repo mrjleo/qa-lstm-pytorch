@@ -6,12 +6,6 @@ import numpy as np
 from tqdm import tqdm
 
 
-def read_pkl(file_path):
-    print('reading {}...'.format(file_path), flush=True)
-    with open(file_path, 'rb') as fp:
-        return pickle.load(fp)
-
-
 def average_precision(pred, gt):
     score = 0.0
     num_hits = 0.0
@@ -62,27 +56,10 @@ class Logger(object):
         self._writer = csv.writer(self._fp)
         self._writer.writerow(header)
         self._fp.flush()
-    
+
     def log(self, item):
         self._writer.writerow(item)
         self._fp.flush()
-    
+
     def __del__(self):
         self._fp.close()
-
-
-def get_vocab(word_counts, vocab_size=None):
-    word_to_id = {'[PAD]': 0, '[UNK]': 1}
-    id_to_word = {0: '[PAD]', 1: '[UNK]'}
-    # start with the first unused index
-    start_index = len(word_to_id)
-    if vocab_size is None:
-        k = None
-    else:
-        k = vocab_size - start_index
-    for i, (word, _) in enumerate(word_counts.most_common(k), start_index):
-        word_to_id[word] = i
-        id_to_word[i] = word
-
-    assert vocab_size is None or vocab_size == len(word_to_id) == len(id_to_word)
-    return word_to_id, id_to_word

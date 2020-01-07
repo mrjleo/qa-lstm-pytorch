@@ -3,12 +3,13 @@
 This is an implementation of the (attention based) QA-LSTM model proposed in [Improved Representation Learning for Question Answer Matching](https://www.aclweb.org/anthology/P16-1044/).
 
 ## Requirements
-This code is tested with Python 3.5.2 and
+This code is tested with Python 3.6.9 and
 * torch==1.2.0
-* numpy==1.17.0
-* torchtext==0.3.1
-* tqdm==4.32.2
-* nltk==3.4.4
+* h5py==2.10.0
+* numpy==1.17.3
+* torchtext==0.4.0
+* tqdm==4.36.1
+* nltk==3.4.5
 
 ## Usage
 The following datasets are currently supported:
@@ -17,32 +18,44 @@ The following datasets are currently supported:
 * [InsuranceQA V2](https://github.com/shuzi/insuranceQA)
 * [WikiPassageQA](https://sites.google.com/site/lyangwww/code-data)
 
-Other datasets can be used by simply adding a preprocessing script.
-
 ### Preprocessing
-First, preprocess your dataset using the corresponding script. For example,
+First, preprocess your dataset:
 ```
-python3 preprocessing/preprocess_fiqa.py ~/fiqa_data preprocessing/fiqa_split/fiqa_split.pkl -n 32 --save ~/fiqa_preprocessed
-```
-preprocesses the FiQA dataset, sampling 32 negative examples for each query.
-
-### Training
-The training script takes care of both training and evaluating on dev- and testset:
-```
-usage: train.py [-h] [-vs VOCAB_SIZE] [-en EMB_NAME] [-ed EMB_DIM]
-                [-hd HIDDEN_DIM] [-d DROPOUT] [-bs BATCH_SIZE] [-m MARGIN]
-                [-e EPOCHS] [-vbs VALID_BATCH_SIZE] [-k MRR_K] [--test]
-                [--ckpt CKPT] [--logfile LOGFILE] [--glove_cache GLOVE_CACHE]
-                [--num_workers NUM_WORKERS] [--random_seed RANDOM_SEED]
-                PREPROC_DIR
+usage: preprocess.py [-h] [-vs VOCAB_SIZE] [-n NUM_NEG_EXAMPLES]
+                     SAVE {fiqa,msmarco,insrqa,wpqa} ...
 
 positional arguments:
-  PREPROC_DIR           Directory with preprocessed files
+  SAVE                  Where to save the results
+  {fiqa,msmarco,insrqa,wpqa}
+                        Choose a dataset
 
 optional arguments:
   -h, --help            show this help message and exit
   -vs VOCAB_SIZE, --vocab_size VOCAB_SIZE
-                        Limit vocabulary size
+                        Vocabulary size
+  -n NUM_NEG_EXAMPLES, --num_neg_examples NUM_NEG_EXAMPLES
+                        Number of negative examples to sample
+```
+For example:
+```
+python3 preprocess.py ~/fiqa_preprocessed fiqa ~/fiqa_data qa_utils/splits/fiqa_split.pkl
+```
+
+### Training
+The training script takes care of both training and evaluating on dev- and testset:
+```
+usage: train.py [-h] [-en EMB_NAME] [-ed EMB_DIM] [-hd HIDDEN_DIM]
+                [-d DROPOUT] [-bs BATCH_SIZE] [-m MARGIN] [-e EPOCHS]
+                [-vbs VALID_BATCH_SIZE] [-k MRR_K] [--test] [--ckpt CKPT]
+                [--logfile LOGFILE] [--glove_cache GLOVE_CACHE]
+                [--random_seed RANDOM_SEED]
+                DATA_DIR
+
+positional arguments:
+  DATA_DIR              Directory with preprocessed files
+
+optional arguments:
+  -h, --help            show this help message and exit
   -en EMB_NAME, --emb_name EMB_NAME
                         GloVe embedding name
   -ed EMB_DIM, --emb_dim EMB_DIM
@@ -66,8 +79,6 @@ optional arguments:
   --logfile LOGFILE     Training log file
   --glove_cache GLOVE_CACHE
                         Word embeddings cache directory
-  --num_workers NUM_WORKERS
-                        Number of DataLoader workers
   --random_seed RANDOM_SEED
                         Random seed
 ```
