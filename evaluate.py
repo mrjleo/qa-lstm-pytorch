@@ -46,13 +46,11 @@ def main():
 
     dev_file = os.path.join(args.DATA_DIR, 'dev.h5')
     dev_ds = TestDataset(dev_file)
-    dev_dl = DataLoader(dev_ds, args.batch_size, shuffle=True, collate_fn=dev_ds.collate_fn,
-                        pin_memory=True)
+    dev_dl = DataLoader(dev_ds, args.batch_size, collate_fn=dev_ds.collate_fn, pin_memory=True)
 
     test_file = os.path.join(args.DATA_DIR, 'test.h5')
     test_ds = TestDataset(test_file)
-    test_dl = DataLoader(test_ds, args.batch_size, shuffle=True, collate_fn=test_ds.collate_fn,
-                         pin_memory=True)
+    test_dl = DataLoader(test_ds, args.batch_size, collate_fn=test_ds.collate_fn, pin_memory=True)
 
     if torch.cuda.is_available():
         # cuda:0 will still use all GPUs

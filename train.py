@@ -65,8 +65,8 @@ def main():
 
     log_file = os.path.join(args.working_dir, 'train.csv')
     logger = Logger(log_file, ['epoch', 'loss'])
+    model.train()
     for epoch in range(args.epochs):
-        model.train()
         epoch_losses = []
         for batch in tqdm(train_dl, desc='epoch {}'.format(epoch + 1)):
             model.zero_grad()

@@ -4,14 +4,21 @@ import h5py
 import torch
 
 
+def load_vocab(attrs):
+    w2i = json.loads(attrs['w2i'])
+    i2w = json.loads(attrs['i2w'])
+    word_to_index = {word: int(i) for word, i in w2i.items()}
+    index_to_word = {int(i): word for i, word in i2w.items()}
+    return word_to_index, index_to_word
+
+
 class TrainDataset(torch.utils.data.Dataset):
     def __init__(self, train_file):
         self.fp = h5py.File(train_file, 'r')
         self.queries = self.fp['queries']
         self.pos_docs = self.fp['pos_docs']
         self.neg_docs = self.fp['neg_docs']
-        self.word_to_index = json.loads(self.queries.attrs['w2i'])
-        self.index_to_word = json.loads(self.queries.attrs['i2w'])
+        self.word_to_index, self.index_to_word = load_vocab(self.queries.attrs)
         self.num_neg_examples = self.neg_docs.attrs['num_neg_examples']
 
     def __getitem__(self, index):
@@ -76,8 +83,7 @@ class TestDataset(torch.utils.data.Dataset):
         self.queries = self.fp['queries']
         self.docs = self.fp['docs']
         self.labels = self.fp['labels']
-        self.word_to_index = json.loads(self.queries.attrs.get('w2i'))
-        self.index_to_word = json.loads(self.queries.attrs.get('i2w'))
+        self.word_to_index, self.index_to_word = load_vocab(self.queries.attrs)
 
     def __getitem__(self, index):
         """

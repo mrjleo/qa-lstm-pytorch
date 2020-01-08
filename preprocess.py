@@ -31,7 +31,7 @@ def get_vocabulary(counter, vocab_size=None):
         most_common = counter.most_common(vocab_size)
     else:
         most_common = counter.most_common()
-    for i, (word, _) in enumerate(most_common, 1):
+    for i, (word, _) in enumerate(most_common, 2):
         index_to_word[i] = word
         word_to_index[word] = i
     return index_to_word, word_to_index
