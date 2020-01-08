@@ -42,12 +42,11 @@ python3 preprocess.py ~/fiqa_preprocessed fiqa ~/fiqa_data qa_utils/splits/fiqa_
 ```
 
 ### Training
-The training script takes care of both training and evaluating on dev- and testset:
+Use the training script to train a new model and save checkpoints:
 ```
 usage: train.py [-h] [-en EMB_NAME] [-ed EMB_DIM] [-hd HIDDEN_DIM]
                 [-d DROPOUT] [-bs BATCH_SIZE] [-m MARGIN] [-e EPOCHS]
-                [-vbs VALID_BATCH_SIZE] [-k MRR_K] [--test] [--ckpt CKPT]
-                [--logfile LOGFILE] [--glove_cache GLOVE_CACHE]
+                [--working_dir WORKING_DIR] [--glove_cache GLOVE_CACHE]
                 [--random_seed RANDOM_SEED]
                 DATA_DIR
 
@@ -70,13 +69,8 @@ optional arguments:
                         Margin for loss function
   -e EPOCHS, --epochs EPOCHS
                         Number of epochs
-  -vbs VALID_BATCH_SIZE, --valid_batch_size VALID_BATCH_SIZE
-                        Validation/testing batch size
-  -k MRR_K, --mrr_k MRR_K
-                        Compute MRR@k
-  --test                Also compute the metrics on the test set
-  --ckpt CKPT           Where to save checkpoints
-  --logfile LOGFILE     Training log file
+  --working_dir WORKING_DIR
+                        Working directory for checkpoints and logs
   --glove_cache GLOVE_CACHE
                         Word embeddings cache directory
   --random_seed RANDOM_SEED
@@ -85,7 +79,30 @@ optional arguments:
 
 For example, training a model on the preprocessed FiQA dataset can be done using
 ```
-python3 train.py ~/fiqa_preprocessed -e 10 -bs 32 -m 0.2 -hd 256 -d 0.5 --ckpt ~/fiqa_ckpt --logfile ~/fiqa.csv -vbs 64 --test --glove_cache ~/torchtext_cache
+python3 train.py ~/fiqa_preprocessed --working_dir ~/fiqa_train --glove_cache ~/torchtext_cache
 ```
 
-This command trains for 10 epochs and reports metrics on dev- and testset after every epoch.
+### Evaluation
+The evaluation script evaluates all saved checkpoints with the preprocessed dev- and testset. The results will be reported in a log file.
+```
+usage: evaluate.py [-h] [--mrr_k MRR_K] [--batch_size BATCH_SIZE]
+                   [--glove_cache GLOVE_CACHE]
+                   DATA_DIR WORKING_DIR
+
+positional arguments:
+  DATA_DIR              Folder with all preprocessed files
+  WORKING_DIR           Working directory
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --mrr_k MRR_K         Compute MRR@k
+  --batch_size BATCH_SIZE
+                        Batch size
+  --glove_cache GLOVE_CACHE
+                        Word embeddings cache directory
+```
+
+We can evaluate our trained example model using
+```
+python evaluate.py ~/fiqa_preprocessed ~/fiqa_train --glove_cache ~/torchtext_cache
+```

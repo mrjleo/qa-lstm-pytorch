@@ -2,6 +2,7 @@
 
 
 import os
+import csv
 import argparse
 
 import torch
@@ -10,8 +11,9 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 from qa_lstm import QA_LSTM
-from data_source import TrainDataset, TestDataset
-from functions import calc_metrics, Logger
+from data_source import TrainDataset
+
+from qa_utils.misc import Logger
 
 
 def loss(s_pos, s_neg, margin):
@@ -28,53 +30,47 @@ def main():
     ap.add_argument('-bs', '--batch_size', type=int, default=32, help='Batch size')
     ap.add_argument('-m', '--margin', type=float, default=1, help='Margin for loss function')
     ap.add_argument('-e', '--epochs', type=int, default=100, help='Number of epochs')
-    ap.add_argument('-vbs', '--valid_batch_size', type=int, default=32, help='Validation/testing batch size')
-    ap.add_argument('-k', '--mrr_k', type=int, default=10, help='Compute MRR@k')
-    ap.add_argument('--test', action='store_true', help='Also compute the metrics on the test set')
-    ap.add_argument('--ckpt', default='ckpt', help='Where to save checkpoints')
-    ap.add_argument('--logfile', default='train.csv', help='Training log file')
+    ap.add_argument('--working_dir', default='train', help='Working directory for checkpoints and logs')
     ap.add_argument('--glove_cache', help='Word embeddings cache directory')
     ap.add_argument('--random_seed', type=int, default=12345, help='Random seed')
     args = ap.parse_args()
 
     torch.manual_seed(args.random_seed)
-    os.makedirs(args.ckpt, exist_ok=True)
+    ckpt_dir = os.path.join(args.working_dir, 'ckpt')
+    os.makedirs(ckpt_dir, exist_ok=True)
+
+    # save all args in a file
+    args_file = os.path.join(args.working_dir, 'args.csv')
+    print('writing {}...'.format(args_file))
+    with open(args_file, 'w') as fp:
+        writer = csv.writer(fp)
+        for arg in vars(args):
+            writer.writerow([arg, getattr(args, arg)])
 
     train_file = os.path.join(args.DATA_DIR, 'train.h5')
     train_ds = TrainDataset(train_file)
     train_dl = DataLoader(train_ds, args.batch_size, shuffle=True, collate_fn=train_ds.collate_fn,
                           pin_memory=True)
 
-    dev_file = os.path.join(args.DATA_DIR, 'dev.h5')
-    dev_ds = TestDataset(dev_file)
-    dev_dl = DataLoader(dev_ds, args.batch_size, shuffle=True, collate_fn=dev_ds.collate_fn,
-                        pin_memory=True)
-
-    test_file = os.path.join(args.DATA_DIR, 'test.h5')
-    test_ds = TestDataset(test_file)
-    test_dl = DataLoader(test_ds, args.batch_size, shuffle=True, collate_fn=test_ds.collate_fn,
-                         pin_memory=True)
-
     if torch.cuda.is_available():
-        device = 'cuda'
+        device = 'cuda:0'
         dev_name = torch.cuda.get_device_name(torch.cuda.current_device())
-        print('using {} device(s): "{}"'.format(torch.cuda.device_count(), dev_name), flush=True)
+        print('using {} device(s): "{}"'.format(torch.cuda.device_count(), dev_name))
     else:
         device = 'cpu'
-    model = QA_LSTM(args.hidden_dim, args.dropout, train_ds.index_to_word, args.emb_name, args.emb_dim, False, args.glove_cache, device)
+    model = QA_LSTM(args.hidden_dim, args.dropout, train_ds.index_to_word, args.emb_name,
+                    args.emb_dim, False, args.glove_cache, device)
     model = torch.nn.DataParallel(model)
     optimizer = torch.optim.Adam(model.parameters())
 
-    logger = Logger(args.logfile, ['epoch', 'loss', 'dev_map', 'dev_mrr', 'test_map', 'test_mrr'])
-    print('training...', flush=True)
+    log_file = os.path.join(args.working_dir, 'train.csv')
+    logger = Logger(log_file, ['epoch', 'loss'])
     for epoch in range(args.epochs):
         model.train()
         epoch_losses = []
-
         for batch in tqdm(train_dl, desc='epoch {}'.format(epoch + 1)):
             model.zero_grad()
             batch_losses = []
-
             pos_sims, neg_sims = model(batch)
             for pos_sim, neg_sims_item in zip(pos_sims, neg_sims):
                 # pos_sim is a single number with shape ()
@@ -86,30 +82,16 @@ def main():
                 max_loss = max(losses)
                 batch_losses.append(max_loss)
                 epoch_losses.append(max_loss.cpu().detach().numpy())
-
             batch_loss = torch.mean(torch.stack(batch_losses, 0).squeeze(), 0)
             batch_loss.requires_grad_()
             batch_loss.backward()
             optimizer.step()
-
-        epoch_loss = np.mean(epoch_losses)
-        print('epoch: {}\tloss: {}'.format(epoch + 1, epoch_loss), flush=True)
-
-        model.eval()
-        dev_map, dev_mrr = calc_metrics(model, dev_dl, args.mrr_k)
-        print('DEV: MAP: {}\tMRR@{}: {}'.format(dev_map, args.mrr_k, dev_mrr), flush=True)
-
-        if args.test:
-            test_map, test_mrr = calc_metrics(model, test_dl, args.mrr_k)
-            print('TEST: MAP: {}\tMRR@{}: {}'.format(test_map, args.mrr_k, test_mrr), flush=True)
-        else:
-            test_map, test_mrr = None, None
-        logger.log([epoch + 1, epoch_loss, dev_map, dev_mrr, test_map, test_mrr])
+        logger.log([epoch + 1, np.mean(epoch_losses)])
 
         # save the module state dict, since we use DataParallel
-        state = {'epoch': epoch + 1, 'state_dict': model.module.state_dict(), 'optimizer': optimizer.state_dict()}
-        fname = os.path.join(args.ckpt, 'model_{}.pt'.format(epoch + 1))
-        print('saving checkpoint in {}'.format(fname), flush=True)
+        state = {'epoch': epoch + 1, 'state_dict': model.module.state_dict(),
+                 'optimizer': optimizer.state_dict()}
+        fname = os.path.join(ckpt_dir, 'weights_{:03d}.pt'.format(epoch + 1))
         torch.save(state, fname)
 
 
