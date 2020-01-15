@@ -14,6 +14,7 @@ from qa_lstm import QA_LSTM
 from data_source import TrainDataset
 
 from qa_utils.misc import Logger
+from qa_utils.training import save_args
 
 
 def loss(s_pos, s_neg, margin):
@@ -41,11 +42,7 @@ def main():
 
     # save all args in a file
     args_file = os.path.join(args.working_dir, 'args.csv')
-    print('writing {}...'.format(args_file))
-    with open(args_file, 'w') as fp:
-        writer = csv.writer(fp)
-        for arg in vars(args):
-            writer.writerow([arg, getattr(args, arg)])
+    save_args(args_file, args)
 
     train_file = os.path.join(args.DATA_DIR, 'train.h5')
     train_ds = TrainDataset(train_file)
@@ -71,7 +68,7 @@ def main():
         for batch in tqdm(train_dl, desc='epoch {}'.format(epoch + 1)):
             model.zero_grad()
             batch_losses = []
-            pos_sims, neg_sims = model(batch)
+            pos_sims, neg_sims = model(*batch)
             for pos_sim, neg_sims_item in zip(pos_sims, neg_sims):
                 # pos_sim is a single number with shape ()
                 # add a dimension and expand the shape to (num_neg_examples,)
@@ -86,6 +83,7 @@ def main():
             batch_loss.requires_grad_()
             batch_loss.backward()
             optimizer.step()
+
         logger.log([epoch + 1, np.mean(epoch_losses)])
 
         # save the module state dict, since we use DataParallel

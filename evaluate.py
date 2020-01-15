@@ -14,23 +14,7 @@ from qa_lstm import QA_LSTM
 from data_source import TestDataset
 
 from qa_utils.misc import Logger
-from qa_utils.evaluation import read_args, get_checkpoints, get_metrics
-
-
-def evaluate(model, dataloader, k, device):
-    result = defaultdict(lambda: ([], []))
-    for queries, query_lengths, docs, doc_lengths, q_ids, labels in tqdm(dataloader):
-        batch = [t.to(device) for t in [queries, query_lengths, docs, doc_lengths]]
-        predictions = model(batch).cpu().detach()
-        for q_id, prediction, label in zip(q_ids, predictions.numpy(), labels):
-            result[q_id][0].append(prediction)
-            result[q_id][1].append(label)
-
-    all_scores, all_labels = [], []
-    for q_id, (score, label) in result.items():
-        all_scores.append(score)
-        all_labels.append(label)
-    return get_metrics(all_scores, all_labels, k)
+from qa_utils.evaluation import read_args, evaluate_all
 
 
 def main():
@@ -64,18 +48,8 @@ def main():
                     False, args.glove_cache, device)
     model = torch.nn.DataParallel(model)
 
-    eval_file = os.path.join(args.WORKING_DIR, 'eval.csv')
-    logger = Logger(eval_file, ['ckpt', 'dev_map', 'dev_mrr', 'test_map', 'test_mrr'])
-    model.eval()
-    for ckpt in get_checkpoints(os.path.join(args.WORKING_DIR, 'ckpt'), r'weights_(\d+).pt'):
-        print('processing {}...'.format(ckpt))
-        state = torch.load(ckpt)
-        model.module.load_state_dict(state['state_dict'])
-        with torch.no_grad():
-            dev_metrics = evaluate(model, dev_dl, args.mrr_k, torch.device(device))
-            test_metrics = evaluate(model, test_dl, args.mrr_k, torch.device(device))
-        row = [ckpt] + list(dev_metrics) + list(test_metrics)
-        logger.log(row)
+    evaluate_all(model, args.WORKING_DIR, dev_dl, test_dl, args.mrr_k, torch.device(device),
+                 has_multiple_inputs=True)
 
 
 if __name__ == '__main__':

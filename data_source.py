@@ -105,11 +105,11 @@ class TestDataset(torch.utils.data.Dataset):
     def collate_fn(self, batch):
         """
         Assemble a training batch. Return
+            * the query IDs
             * a padded batch of queries
             * the original query lengths
             * a padded batch of documents, one for each query
             * the original document lengths
-            * the query IDs
             * the labels
         """
         queries, query_lengths, docs, doc_lengths, q_ids, labels = [], [], [], [], [], []
@@ -125,7 +125,10 @@ class TestDataset(torch.utils.data.Dataset):
         query_lengths = torch.LongTensor(query_lengths)
         docs = torch.nn.utils.rnn.pad_sequence(docs, batch_first=True)
         doc_lengths = torch.LongTensor(doc_lengths)
-        return queries, query_lengths, docs, doc_lengths, q_ids, labels
+
+        q_ids = torch.IntTensor(q_ids)
+        labels = torch.IntTensor(labels)
+        return q_ids, [queries, query_lengths, docs, doc_lengths], labels
 
     def __del__(self):
         self.fp.close()

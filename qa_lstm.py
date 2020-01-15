@@ -114,12 +114,12 @@ class QA_LSTM(torch.nn.Module):
         # convert to single tensor
         return torch.stack(sim_list)
 
-    def _forward_train(self, data):
+    def _forward_train(self, queries, query_lengths, pos_docs, pos_doc_lengths, neg_docs,
+                       neg_doc_lengths):
         """
         Return the similarities between each query and its positive document and, for each query,
         all similarities to the negative documents.
         """
-        queries, query_lengths, pos_docs, pos_doc_lengths, neg_docs, neg_doc_lengths = data
         query_outputs = self._encode(queries, query_lengths)
         query_outputs_pooled = self._max_pool(query_outputs, query_lengths)
         pos_doc_outputs = self._encode(pos_docs, pos_doc_lengths)
@@ -131,18 +131,19 @@ class QA_LSTM(torch.nn.Module):
         neg_sims = self._get_similarities(query_outputs_pooled, neg_docs, neg_doc_lengths)
         return pos_sims, neg_sims
 
-    def _forward_test(self, data):
+    def _forward_test(self, queries, query_lengths, docs, doc_lengths):
         """Return the similarities between all query and document pairs."""
-        queries, query_lengths, docs, doc_lengths = data
         query_outputs = self._encode(queries, query_lengths)
         query_outputs_pooled = self._max_pool(query_outputs, query_lengths)
         doc_outputs = self._encode(docs, doc_lengths)
         attention = self._attention(query_outputs_pooled, doc_outputs, doc_lengths)
         attention_pooled = self._max_pool(attention, doc_lengths)
-        return self._sim(query_outputs_pooled, attention_pooled)
 
-    def forward(self, data):
+        # for testing we need another axis
+        return self._sim(query_outputs_pooled, attention_pooled).unsqueeze(0)
+
+    def forward(self, *data):
         """Call _forward_train or _forward_test depending on the model's mode."""
         # for multi-gpu training
         self.lstm.flatten_parameters()
-        return self._forward_train(data) if self.training else self._forward_test(data)
+        return self._forward_train(*data) if self.training else self._forward_test(*data)
