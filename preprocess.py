@@ -12,6 +12,7 @@ import numpy as np
 from tqdm import tqdm
 
 from qa_utils.preprocessing.fiqa import FiQA
+from qa_utils.preprocessing.antique import Antique
 from qa_utils.preprocessing.msmarco import MSMARCO
 from qa_utils.preprocessing.insrqa import InsuranceQA
 from qa_utils.preprocessing.wpqa import WikiPassageQA
@@ -52,6 +53,7 @@ def main():
     subparsers = ap.add_subparsers(help='Choose a dataset', dest='dataset')
     subparsers.required = True
     FiQA.add_subparser(subparsers, 'fiqa')
+    Antique.add_subparser(subparsers, 'antique')
     MSMARCO.add_subparser(subparsers, 'msmarco')
     InsuranceQA.add_subparser(subparsers, 'insrqa')
     WikiPassageQA.add_subparser(subparsers, 'wpqa')
@@ -66,6 +68,8 @@ def main():
         ds = MSMARCO(args)
     elif args.dataset == 'wpqa':
         ds = WikiPassageQA(args)
+    elif args.dataset == 'antique':
+        ds = Antique(args)
 
     def _f(x):
         return nltk.word_tokenize(x.lower())
