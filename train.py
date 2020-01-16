@@ -50,16 +50,17 @@ def main():
                           pin_memory=True)
 
     if torch.cuda.is_available():
-        device = 'cuda:0'
+        device = torch.device('cuda:0')
         dev_name = torch.cuda.get_device_name(torch.cuda.current_device())
         print('using {} device(s): "{}"'.format(torch.cuda.device_count(), dev_name))
     else:
-        device = 'cpu'
+        device = torch.device('cpu')
     model = QA_LSTM(args.hidden_dim, args.dropout, train_ds.index_to_word, args.emb_name,
-                    args.emb_dim, False, args.glove_cache, device)
+                    args.emb_dim, False, args.glove_cache)
+    model.to(device)
     model = torch.nn.DataParallel(model)
-    optimizer = torch.optim.Adam(model.parameters())
 
+    optimizer = torch.optim.Adam(model.parameters())
     log_file = os.path.join(args.working_dir, 'train.csv')
     logger = Logger(log_file, ['epoch', 'loss'])
     model.train()

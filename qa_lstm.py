@@ -30,7 +30,7 @@ class GloveEmbedding(torch.nn.Module):
 
 
 class QA_LSTM(torch.nn.Module):
-    def __init__(self, hidden_dim, dropout, id_to_word, emb_name, emb_dim, emb_freeze=False, glove_cache=None, device='cpu'):
+    def __init__(self, hidden_dim, dropout, id_to_word, emb_name, emb_dim, emb_freeze=False, glove_cache=None):
         super().__init__()
         self.emb = GloveEmbedding(id_to_word, emb_name, emb_dim, emb_freeze, glove_cache)
         self.lstm = torch.nn.LSTM(emb_dim, hidden_dim, batch_first=True, bidirectional=True)
@@ -44,9 +44,6 @@ class QA_LSTM(torch.nn.Module):
 
         self.dropout = torch.nn.Dropout(dropout)
         self.cos_sim = torch.nn.CosineSimilarity()
-
-        self.device = torch.device(device)
-        self.to(self.device)
 
     def _encode(self, inputs, lengths):
         """Encode a batch of padded sequences using the shared LSTM."""
@@ -63,8 +60,11 @@ class QA_LSTM(torch.nn.Module):
         """Perform max pooling on the LSTM outputs, masking padding tokens."""
         num_sequences, max_seq_len, num_hidden = lstm_outputs.shape
 
+        # we need to figure out which device this is on in case of multiple GPUs
+        dev = next(self.parameters()).device
+
         # create mask
-        rng = torch.arange(max_seq_len, device=self.device).unsqueeze(0).expand(num_sequences, -1)
+        rng = torch.arange(max_seq_len, device=dev).unsqueeze(0).expand(num_sequences, -1)
         rng = rng.unsqueeze(-1).expand(-1, -1, num_hidden)
         lengths = lengths.unsqueeze(1).expand(-1, num_hidden)
         lengths = lengths.unsqueeze(1).expand(-1, max_seq_len, -1)
@@ -88,8 +88,11 @@ class QA_LSTM(torch.nn.Module):
         m = self.tanh(self.W_am(doc_outputs) + self.W_qm(query_outputs_pooled).unsqueeze(1).expand(-1, max_seq_len, -1))
         wm = self.w_ms(m)
 
+        # we need to figure out which device this is on in case of multiple GPUs
+        dev = next(self.parameters()).device
+
         # mask the padding tokens before computing the softmax by setting the corresponding values to -inf
-        mask = torch.arange(max_seq_len, device=self.device)[None, :] < doc_lengths[:, None]
+        mask = torch.arange(max_seq_len, device=dev)[None, :] < doc_lengths[:, None]
         wm[~mask] = float('-inf')
 
         s = self.softmax(wm)
