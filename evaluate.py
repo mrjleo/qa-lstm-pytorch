@@ -37,15 +37,15 @@ def main():
     test_dl = DataLoader(test_ds, args.batch_size, collate_fn=test_ds.collate_fn, pin_memory=True)
 
     if torch.cuda.is_available():
-        # cuda:0 will still use all GPUs
-        device = 'cuda:0'
+        device = torch.device('cuda:0')
         dev_name = torch.cuda.get_device_name(torch.cuda.current_device())
         print('using {} device(s): "{}"'.format(torch.cuda.device_count(), dev_name))
     else:
-        device = 'cpu'
+        device = torch.device('cpu')
     model = QA_LSTM(int(train_args['hidden_dim']), float(train_args['dropout']),
                     dev_ds.index_to_word, train_args['emb_name'], int(train_args['emb_dim']),
                     False, args.glove_cache, device)
+    model.to(device)
     model = torch.nn.DataParallel(model)
 
     evaluate_all(model, args.WORKING_DIR, dev_dl, test_dl, args.mrr_k, torch.device(device),
