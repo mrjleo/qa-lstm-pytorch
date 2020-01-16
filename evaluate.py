@@ -44,7 +44,7 @@ def main():
         device = torch.device('cpu')
     model = QA_LSTM(int(train_args['hidden_dim']), float(train_args['dropout']),
                     dev_ds.index_to_word, train_args['emb_name'], int(train_args['emb_dim']),
-                    False, args.glove_cache, device)
+                    False, args.glove_cache)
     model.to(device)
     model = torch.nn.DataParallel(model)
 
