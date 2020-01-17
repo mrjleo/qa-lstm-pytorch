@@ -143,7 +143,7 @@ class QA_LSTM(torch.nn.Module):
         attention_pooled = self._max_pool(attention, doc_lengths)
 
         # for testing we need another axis
-        return self._sim(query_outputs_pooled, attention_pooled).unsqueeze(0)
+        return self._sim(query_outputs_pooled, attention_pooled).unsqueeze(1)
 
     def forward(self, *data):
         """Call _forward_train or _forward_test depending on the model's mode."""
