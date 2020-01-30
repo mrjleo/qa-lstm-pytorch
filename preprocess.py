@@ -15,7 +15,6 @@ from qa_utils.preprocessing.fiqa import FiQA
 from qa_utils.preprocessing.antique import Antique
 from qa_utils.preprocessing.msmarco import MSMARCO
 from qa_utils.preprocessing.insrqa import InsuranceQA
-from qa_utils.preprocessing.wpqa import WikiPassageQA
 
 
 def get_word_counter(sentences):
@@ -56,7 +55,6 @@ def main():
     Antique.add_subparser(subparsers, 'antique')
     MSMARCO.add_subparser(subparsers, 'msmarco')
     InsuranceQA.add_subparser(subparsers, 'insrqa')
-    WikiPassageQA.add_subparser(subparsers, 'wpqa')
     args = ap.parse_args()
 
     os.makedirs(args.SAVE, exist_ok=True)
@@ -66,8 +64,6 @@ def main():
         ds = InsuranceQA(args)
     elif args.dataset == 'msmarco':
         ds = MSMARCO(args)
-    elif args.dataset == 'wpqa':
-        ds = WikiPassageQA(args)
     elif args.dataset == 'antique':
         ds = Antique(args)
 
