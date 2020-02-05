@@ -87,16 +87,17 @@ def main():
     train_file = os.path.join(args.SAVE, 'train.h5')
     print('writing {}...'.format(train_file))
     with h5py.File(train_file, 'w') as fp:
-        queries_shape = pos_docs_shape = (len(ds.trainset),)
+        trainset = ds.trainset
+        queries_shape = pos_docs_shape = (len(trainset),)
         # variable length datasets seem to only support 1D data
-        neg_docs_shape = (len(ds.trainset) * args.num_neg_examples,)
+        neg_docs_shape = (len(trainset) * args.num_neg_examples,)
         queries_ds = fp.create_dataset('queries', queries_shape, dtype=var_int32)
         pos_docs_ds = fp.create_dataset('pos_docs', pos_docs_shape, dtype=var_int32)
         neg_docs_ds = fp.create_dataset('neg_docs', neg_docs_shape, dtype=var_int32)
         queries_ds.attrs.update(vocab)
         neg_docs_ds.attrs['num_neg_examples'] = args.num_neg_examples
 
-        for i, (query, pos_doc, neg_docs) in tqdm(enumerate(ds.trainset), total=len(ds.trainset)):
+        for i, (query, pos_doc, neg_docs) in tqdm(enumerate(trainset), total=len(trainset)):
             queries_ds[i] = get_embeddings(query, word_to_index)
             pos_docs_ds[i] = get_embeddings(pos_doc, word_to_index)
             for j, neg_doc in enumerate(neg_docs):
@@ -105,14 +106,15 @@ def main():
     dev_file = os.path.join(args.SAVE, 'dev.h5')
     print('writing {}...'.format(dev_file))
     with h5py.File(dev_file, 'w') as fp:
-        dev_shape = (len(ds.devset),)
+        devset = ds.devset
+        dev_shape = (len(devset),)
         q_ids_ds = fp.create_dataset('q_ids', dev_shape, dtype='int32')
         queries_ds = fp.create_dataset('queries', dev_shape, dtype=var_int32)
         docs_ds = fp.create_dataset('docs', dev_shape, dtype=var_int32)
         labels_ds = fp.create_dataset('labels', dev_shape, dtype='int32')
         queries_ds.attrs.update(vocab)
 
-        for i, (q_id, query, doc, label) in tqdm(enumerate(ds.devset), total=len(ds.devset)):
+        for i, (q_id, query, doc, label) in tqdm(enumerate(devset), total=len(devset)):
             q_ids_ds[i] = q_id
             queries_ds[i] = get_embeddings(query, word_to_index)
             docs_ds[i] = get_embeddings(doc, word_to_index)
@@ -121,14 +123,15 @@ def main():
     test_file = os.path.join(args.SAVE, 'test.h5')
     print('writing {}...'.format(test_file))
     with h5py.File(test_file, 'w') as fp:
-        test_shape = (len(ds.testset),)
+        testset = ds.testset
+        test_shape = (len(testset),)
         q_ids_ds = fp.create_dataset('q_ids', test_shape, dtype='int32')
         queries_ds = fp.create_dataset('queries', test_shape, dtype=var_int32)
         docs_ds = fp.create_dataset('docs', test_shape, dtype=var_int32)
         labels_ds = fp.create_dataset('labels', test_shape, dtype='int32')
         queries_ds.attrs.update(vocab)
 
-        for i, (q_id, query, doc, label) in tqdm(enumerate(ds.testset), total=len(ds.testset)):
+        for i, (q_id, query, doc, label) in tqdm(enumerate(testset), total=len(testset)):
             q_ids_ds[i] = q_id
             queries_ds[i] = get_embeddings(query, word_to_index)
             docs_ds[i] = get_embeddings(doc, word_to_index)
