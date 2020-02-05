@@ -21,7 +21,7 @@ class GloveEmbedding(torch.nn.Module):
                 weights.append(self.glove.vectors[glove_idx])
             else:
                 # initialize randomly
-                weights.append(torch.zeros([self.dim]).uniform_(-0.25, 0.25))
+                weights.append(torch.zeros([self.dim]).normal_())
         # this converts a list of tensors to a new tensor
         return torch.stack(weights)
 
