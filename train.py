@@ -66,7 +66,7 @@ def main():
     model.train()
     for epoch in range(args.epochs):
         epoch_losses = []
-        for batch in tqdm(train_dl, desc='epoch {}'.format(epoch + 1)):
+        for batch in tqdm(train_dl, desc='epoch {}'.format(epoch)):
             model.zero_grad()
             batch_losses = []
             pos_sims, neg_sims = model(*batch)
@@ -85,12 +85,12 @@ def main():
             batch_loss.backward()
             optimizer.step()
 
-        logger.log([epoch + 1, np.mean(epoch_losses)])
+        logger.log([epoch, np.mean(epoch_losses)])
 
         # save the module state dict, since we use DataParallel
-        state = {'epoch': epoch + 1, 'state_dict': model.module.state_dict(),
+        state = {'epoch': epoch, 'state_dict': model.module.state_dict(),
                  'optimizer': optimizer.state_dict()}
-        fname = os.path.join(ckpt_dir, 'weights_{:03d}.pt'.format(epoch + 1))
+        fname = os.path.join(ckpt_dir, 'weights_{:03d}.pt'.format(epoch))
         torch.save(state, fname)
 
 
