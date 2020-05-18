@@ -16,17 +16,17 @@ The following datasets are currently supported:
 * [MS MARCO Ranking](http://www.msmarco.org/dataset.aspx)
 * [FiQA Task 2](https://sites.google.com/view/fiqa/home)
 * [InsuranceQA V2](https://github.com/shuzi/insuranceQA)
-* [WikiPassageQA](https://sites.google.com/site/lyangwww/code-data)
+* [ANTIQUE](https://ciir.cs.umass.edu/downloads/Antique/)
 
 ### Preprocessing
 First, preprocess your dataset:
 ```
 usage: preprocess.py [-h] [-vs VOCAB_SIZE] [-n NUM_NEG_EXAMPLES]
-                     SAVE {fiqa,msmarco,insrqa,wpqa} ...
+                     SAVE {fiqa,antique,msmarco,insrqa} ...
 
 positional arguments:
   SAVE                  Where to save the results
-  {fiqa,msmarco,insrqa,wpqa}
+  {fiqa,antique,msmarco,insrqa}
                         Choose a dataset
 
 optional arguments:
