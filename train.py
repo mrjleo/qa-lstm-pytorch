@@ -14,6 +14,7 @@ from qa_lstm import QA_LSTM
 from data_source import TrainDataset
 
 from qa_utils.misc import Logger
+from qa_utils.io import get_cuda_device
 from qa_utils.training import save_args
 
 
@@ -37,6 +38,7 @@ def main():
     args = ap.parse_args()
 
     torch.manual_seed(args.random_seed)
+    device = get_cuda_device()
     ckpt_dir = os.path.join(args.working_dir, 'ckpt')
     os.makedirs(ckpt_dir, exist_ok=True)
 
@@ -49,12 +51,6 @@ def main():
     train_dl = DataLoader(train_ds, args.batch_size, shuffle=True, collate_fn=train_ds.collate_fn,
                           pin_memory=True)
 
-    if torch.cuda.is_available():
-        device = torch.device('cuda:0')
-        dev_name = torch.cuda.get_device_name(torch.cuda.current_device())
-        print('using {} device(s): "{}"'.format(torch.cuda.device_count(), dev_name))
-    else:
-        device = torch.device('cpu')
     model = QA_LSTM(args.hidden_dim, args.dropout, train_ds.index_to_word, args.emb_name,
                     args.emb_dim, False, args.glove_cache)
     model.to(device)
