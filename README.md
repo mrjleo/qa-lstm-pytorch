@@ -10,6 +10,10 @@ This code is tested with Python 3.6.9 and
 * torchtext==0.6.0
 * tqdm==4.46.0
 * nltk==3.4.5
+* scikit-learn==0.22.1
+
+## Cloning
+Clone this repository using `git clone --recursive` to get the submodule.
 
 ## Usage
 The following datasets are currently supported:
