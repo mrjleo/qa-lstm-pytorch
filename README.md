@@ -4,11 +4,11 @@ This is an implementation of the (attention based) QA-LSTM model proposed in [Im
 
 ## Requirements
 This code is tested with Python 3.6.9 and
-* torch==1.2.0
+* torch==1.5.0
 * h5py==2.10.0
-* numpy==1.17.3
-* torchtext==0.4.0
-* tqdm==4.36.1
+* numpy==1.18.1
+* torchtext==0.6.0
+* tqdm==4.46.0
 * nltk==3.4.5
 
 ## Usage
