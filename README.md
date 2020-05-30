@@ -4,7 +4,7 @@ This is an implementation of the (attention based) QA-LSTM model proposed in [Im
 
 ## Requirements
 This code is tested with Python 3.8.3 and
-* torch==1.4.0
+* torch==1.5.0
 * h5py==2.10.0
 * numpy==1.18.1
 * torchtext==0.6.0
@@ -108,5 +108,5 @@ optional arguments:
 
 We can evaluate our trained example model using
 ```
-python evaluate.py ~/fiqa_preprocessed ~/fiqa_train --glove_cache ~/torchtext_cache
+python3 evaluate.py ~/fiqa_preprocessed ~/fiqa_train --glove_cache ~/torchtext_cache
 ```

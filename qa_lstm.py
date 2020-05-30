@@ -60,8 +60,8 @@ class QA_LSTM(torch.nn.Module):
         """Perform max pooling on the LSTM outputs, masking padding tokens."""
         num_sequences, max_seq_len, num_hidden = lstm_outputs.shape
 
-        # we need to figure out which device this is on in case of multiple GPUs
-        dev = next(self.parameters()).device
+        # we need to create the mask on the same device
+        dev = lstm_outputs.device
 
         # create mask
         rng = torch.arange(max_seq_len, device=dev).unsqueeze(0).expand(num_sequences, -1)
@@ -88,8 +88,8 @@ class QA_LSTM(torch.nn.Module):
         m = self.tanh(self.W_am(doc_outputs) + self.W_qm(query_outputs_pooled).unsqueeze(1).expand(-1, max_seq_len, -1))
         wm = self.w_ms(m)
 
-        # we need to figure out which device this is on in case of multiple GPUs
-        dev = next(self.parameters()).device
+        # we need to create the mask on the same device
+        dev = wm.device
 
         # mask the padding tokens before computing the softmax by setting the corresponding values to -inf
         mask = torch.arange(max_seq_len, device=dev)[None, :] < doc_lengths[:, None]
