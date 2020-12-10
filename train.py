@@ -1,83 +1,70 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 
 
-import os
-import csv
+import sys
+import pickle
 import argparse
+from pathlib import Path
 
-import torch
-import numpy as np
-from tqdm import tqdm
-from torch.utils.data import DataLoader
+from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
-from qa_lstm import QA_LSTM
-from data_source import TrainDataset
-
-from qa_utils.misc import Logger
-from qa_utils.io import get_cuda_device
-from qa_utils.training import prepare_logging
-
-
-def loss(s_pos, s_neg, margin):
-    return torch.clamp(margin - s_pos + s_neg, min=0)
+from model.qa_lstm import QALSTMRanker
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('DATA_DIR', help='Directory with preprocessed files')
-    ap.add_argument('-en', '--emb_name', default='840B', help='GloVe embedding name')
-    ap.add_argument('-ed', '--emb_dim', type=int, default=300, help='Word embedding dimension')
-    ap.add_argument('-hd', '--hidden_dim', type=int, default=128, help='LSTM hidden dimension')
-    ap.add_argument('-d', '--dropout', type=float, default=0.3, help='Dropout rate')
-    ap.add_argument('-bs', '--batch_size', type=int, default=32, help='Batch size')
-    ap.add_argument('-m', '--margin', type=float, default=1, help='Margin for loss function')
-    ap.add_argument('-e', '--epochs', type=int, default=100, help='Number of epochs')
-    ap.add_argument('--working_dir', default='train', help='Working directory for checkpoints and logs')
-    ap.add_argument('--glove_cache', help='Word embeddings cache directory')
-    ap.add_argument('--random_seed', type=int, default=12345, help='Random seed')
+    ap = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    ap.add_argument('DATA_DIR', help='Folder with all preprocessed files')
+    ap.add_argument('VOCAB', help='Vocabulary file')
+
+    # trainer args
+    # Trainer.add_argparse_args would make the help too cluttered
+    ap.add_argument('--accumulate_grad_batches', type=int, default=1, help='Update weights after this many batches')
+    ap.add_argument('--max_epochs', type=int, default=20, help='Maximum number of epochs')
+    ap.add_argument('--gpus', type=int, nargs='+', help='GPU IDs to train on')
+    ap.add_argument('--val_check_interval', type=float, default=1.0, help='Validation check interval')
+    ap.add_argument('--save_top_k', type=int, default=1, help='Save top-k checkpoints')
+    ap.add_argument('--limit_val_batches', type=int, default=sys.maxsize, help='Use a subset of validation data')
+    ap.add_argument('--limit_train_batches', type=int, default=sys.maxsize, help='Use a subset of training data')
+    ap.add_argument('--limit_test_batches', type=int, default=sys.maxsize, help='Use a subset of test data')
+    ap.add_argument('--precision', type=int, choices=[16, 32], default=32, help='Floating point precision')
+    ap.add_argument('--distributed_backend', default='ddp', help='Distributed backend')
+
+    # model args
+    QALSTMRanker.add_model_specific_args(ap)
+
+    # remaining args
+    ap.add_argument('--training_mode', choices=['pointwise', 'pairwise'], default='pairwise', help='Training mode')
+    ap.add_argument('--val_patience', type=int, default=3, help='Validation patience')
+    ap.add_argument('--save_dir', default='out', help='Directory for logs, checkpoints and predictions')
+    ap.add_argument('--random_seed', type=int, default=123, help='Random seed')
+    ap.add_argument('--load_weights', help='Load pre-trained weights before training')
+    ap.add_argument('--test', action='store_true', help='Test the model after training')
     args = ap.parse_args()
 
-    torch.manual_seed(args.random_seed)
-    device = get_cuda_device()
-    logger, ckpt_dir = prepare_logging(args)
+    # in DDP mode we always need a random seed
+    seed_everything(args.random_seed)
 
-    train_file = os.path.join(args.DATA_DIR, 'train.h5')
-    train_ds = TrainDataset(train_file)
-    train_dl = DataLoader(train_ds, args.batch_size, shuffle=True, collate_fn=train_ds.collate_fn,
-                          pin_memory=True)
+    data_dir = Path(args.DATA_DIR)
+    args.data_file = data_dir / 'data.h5'
+    args.train_file_pointwise = data_dir / 'train_pointwise.h5'
+    args.train_file_pairwise = data_dir / 'train_pairwise.h5'
+    args.val_file = data_dir / 'val.h5'
+    args.test_file = data_dir / 'test.h5'
+    with open(args.VOCAB, 'rb') as fp:
+        vocab = pickle.load(fp)
+    model = QALSTMRanker(vars(args), vocab, training_mode=args.training_mode)
 
-    model = QA_LSTM(args.hidden_dim, args.dropout, train_ds.index_to_word, args.emb_name,
-                    args.emb_dim, False, args.glove_cache)
-    model.to(device)
-    model = torch.nn.DataParallel(model)
-
-    optimizer = torch.optim.Adam(model.parameters())
-    model.train()
-    for epoch in range(args.epochs):
-        epoch_losses = []
-        for batch in tqdm(train_dl, desc='epoch {}'.format(epoch)):
-            model.zero_grad()
-            batch_losses = []
-
-            pos_sims, all_neg_sims = model(*batch)
-            for pos_sim, neg_sims in zip(pos_sims, all_neg_sims):
-                # pos_sim is a single number with shape ()
-                # add a dimension and expand the shape to (num_neg_examples,)
-                pos_sims = pos_sim.unsqueeze(0).expand(train_ds.num_neg_examples)
-                # we get better results training on all pairs instead of just the one with max. loss
-                batch_losses.extend(loss(pos_sims, neg_sims, args.margin))
-
-            batch_loss = torch.mean(torch.stack(batch_losses, 0).squeeze(), 0)
-            epoch_losses.append(batch_loss.cpu().detach().numpy())
-            batch_loss.backward()
-            optimizer.step()
-
-        logger.log([epoch, np.mean(epoch_losses)])
-        # save the module state dict, since we use DataParallel
-        state = {'epoch': epoch, 'state_dict': model.module.state_dict(),
-                 'optimizer': optimizer.state_dict()}
-        fname = os.path.join(ckpt_dir, 'weights_{:03d}.pt'.format(epoch))
-        torch.save(state, fname)
+    early_stopping = EarlyStopping(monitor='val_map', mode='max', patience=args.val_patience, verbose=True)
+    model_checkpoint = ModelCheckpoint(monitor='val_map', mode='max', save_top_k=args.save_top_k, verbose=True)
+    trainer = Trainer.from_argparse_args(args, deterministic=True,
+                                         replace_sampler_ddp=False,
+                                         default_root_dir=args.save_dir,
+                                         checkpoint_callback=model_checkpoint,
+                                         callbacks=[early_stopping])
+    trainer.fit(model)
+    if args.test:
+        trainer.test()
 
 
 if __name__ == '__main__':
