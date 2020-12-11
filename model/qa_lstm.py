@@ -11,6 +11,7 @@ from model.datasets import PointwiseTrainDataset, PairwiseTrainDataset, ValTestD
 
 class QALSTMRanker(BaseRanker):
     """QA-LSTM for passage ranking using GloVe embeddings.
+
     Args:
         hparams (Dict[str, Any]): All model hyperparameters
         vocab (Vocab): Vocabulary
@@ -29,14 +30,15 @@ class QALSTMRanker(BaseRanker):
         uses_ddp = 'ddp' in hparams['distributed_backend']
         super().__init__(hparams, train_ds, val_ds, test_ds, hparams['loss_margin'], hparams['batch_size'], rr_k, num_workers, uses_ddp)
 
+        pad_id = vocab.stoi['<pad>']
         emb_dim = vocab.vectors[0].shape[0]
-        self.embedding = torch.nn.Embedding.from_pretrained(vocab.vectors, freeze=False)
+        self.embedding = torch.nn.Embedding.from_pretrained(vocab.vectors, freeze=False, padding_idx=pad_id)
         self.lstm = torch.nn.LSTM(emb_dim, hparams['hidden_dim'], batch_first=True, bidirectional=True)
 
         # attention weights
-        self.W_am = torch.nn.Linear(hparams['hidden_dim'] * 2, hparams['hidden_dim'] * 2, bias=False)
-        self.W_qm = torch.nn.Linear(hparams['hidden_dim'] * 2, hparams['hidden_dim'] * 2, bias=False)
-        self.w_ms = torch.nn.Linear(hparams['hidden_dim'] * 2, 1, bias=False)
+        self.W_am = torch.nn.Linear(hparams['hidden_dim'] * 2, hparams['hidden_dim'] * 2)
+        self.W_qm = torch.nn.Linear(hparams['hidden_dim'] * 2, hparams['hidden_dim'] * 2)
+        self.w_ms = torch.nn.Linear(hparams['hidden_dim'] * 2, 1)
         self.tanh = torch.nn.Tanh()
         self.softmax = torch.nn.Softmax(dim=1)
 

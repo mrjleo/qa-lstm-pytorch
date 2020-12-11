@@ -38,7 +38,6 @@ def main():
     ap.add_argument('--val_patience', type=int, default=3, help='Validation patience')
     ap.add_argument('--save_dir', default='out', help='Directory for logs, checkpoints and predictions')
     ap.add_argument('--random_seed', type=int, default=123, help='Random seed')
-    ap.add_argument('--load_weights', help='Load pre-trained weights before training')
     ap.add_argument('--test', action='store_true', help='Test the model after training')
     args = ap.parse_args()
 

@@ -8,6 +8,7 @@ from collections import Counter
 
 import h5py
 import nltk
+import torch
 from tqdm import tqdm
 from torchtext.vocab import Vocab
 
@@ -26,8 +27,8 @@ def main():
         num_items = len(fp['queries']) + len(fp['docs'])
         ct = Counter()
         for s in tqdm(chain(fp['queries'], fp['docs']), total=num_items):
-            ct.update(nltk.word_tokenize(s.lower()))
-        vocab = Vocab(ct, args.max_size, vectors=args.vectors, vectors_cache=args.cache)
+            ct.update(nltk.word_tokenize(s))
+        vocab = Vocab(ct, args.max_size, vectors=args.vectors, vectors_cache=args.cache, unk_init=torch.normal)
 
     print(f'writing {args.out_file}...')
     with open(args.out_file, 'wb') as fp:

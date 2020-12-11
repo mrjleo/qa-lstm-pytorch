@@ -30,10 +30,10 @@ def _get_single_input(query: str, doc: str, vocab: Vocab) -> Input:
     Returns:
         Input: Query and document tokens
     """
-    query_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(query.lower())]
+    query_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(query)]
     doc_tokens = []
     sentence_lengths = []
-    for sentence in nltk.sent_tokenize(doc.lower()):
+    for sentence in nltk.sent_tokenize(doc):
         sentence_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(sentence)]
         doc_tokens.extend(sentence_tokens)
         sentence_lengths.append(len(sentence_tokens))
