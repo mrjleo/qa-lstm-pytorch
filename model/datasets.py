@@ -31,12 +31,7 @@ def _get_single_input(query: str, doc: str, vocab: Vocab) -> Input:
         Input: Query and document tokens
     """
     query_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(query)]
-    doc_tokens = []
-    sentence_lengths = []
-    for sentence in nltk.sent_tokenize(doc):
-        sentence_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(sentence)]
-        doc_tokens.extend(sentence_tokens)
-        sentence_lengths.append(len(sentence_tokens))
+    doc_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(doc)]
     return torch.LongTensor(query_tokens), \
            torch.LongTensor(doc_tokens)
 

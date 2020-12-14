@@ -11,6 +11,7 @@ import nltk
 import torch
 from tqdm import tqdm
 from torchtext.vocab import Vocab
+from pytorch_lightning import seed_everything
 
 
 def main():
@@ -20,7 +21,10 @@ def main():
     ap.add_argument('--cache', help='Torchtext cache')
     ap.add_argument('--vectors', default='glove.840B.300d', help='Pre-trained vectors')
     ap.add_argument('--out_file', default='vocab.pkl', help='Where to save the vocabulary')
+    ap.add_argument('--random_seed', type=int, default=123, help='Random seed')
     args = ap.parse_args()
+
+    seed_everything(args.random_seed)
 
     print(f'reading {args.DATA_FILE}...')
     with h5py.File(args.DATA_FILE, 'r') as fp:
