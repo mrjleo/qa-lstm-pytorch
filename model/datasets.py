@@ -30,8 +30,9 @@ def _get_single_input(query: str, doc: str, vocab: Vocab) -> Input:
     Returns:
         Input: Query and document tokens
     """
-    query_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(query)]
-    doc_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(doc)]
+    # some queries and documents might be empty
+    query_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(query or '(empty)')]
+    doc_tokens = [vocab.stoi[w] for w in nltk.word_tokenize(doc or '(empty)')]
     return torch.LongTensor(query_tokens), \
            torch.LongTensor(doc_tokens)
 
