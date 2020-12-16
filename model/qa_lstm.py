@@ -1,12 +1,12 @@
 from argparse import ArgumentParser
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import torch
 from torchtext.vocab import Vocab
 
 from qa_utils.lightning.base_ranker import BaseRanker
 
-from model.datasets import PointwiseTrainDataset, PairwiseTrainDataset, ValTestDataset, Batch
+from model.datasets import PointwiseTrainDataset, PairwiseTrainDataset, ValTestDataset, Batch, PointwiseTrainBatch, PairwiseTrainBatch
 
 
 class QALSTMRanker(BaseRanker):
@@ -139,6 +139,27 @@ class QALSTMRanker(BaseRanker):
         """
         return torch.optim.Adam(self.parameters(), lr=self.hparams['lr'])
 
+    def training_step(self, batch: Union[PointwiseTrainBatch, PairwiseTrainBatch], batch_idx: int) -> torch.Tensor:
+        """Train a single batch. In pairwise training mode, we use the similarity directly without sigmoid.
+
+        Args:
+            batch (Union[PointwiseTrainBatch, PairwiseTrainBatch]): A training batch, depending on the mode
+            batch_idx (int): Batch index
+
+        Returns:
+            torch.Tensor: Training loss
+        """
+        if self.training_mode == 'pointwise':
+            inputs, labels = batch
+            loss = self.bce(self(inputs).flatten(), labels.flatten())
+        else:
+            pos_inputs, neg_inputs = batch
+            pos_outputs = self(pos_inputs)
+            neg_outputs = self(neg_inputs)
+            loss = torch.mean(torch.clamp(self.loss_margin - pos_outputs + neg_outputs, min=0))
+        self.log('train_loss', loss)
+        return loss
+
     @staticmethod
     def add_model_specific_args(ap: ArgumentParser):
         """Add model-specific arguments to the parser.
@@ -149,5 +170,5 @@ class QALSTMRanker(BaseRanker):
         ap.add_argument('--hidden_dim', type=int, default=256, help='The hidden dimensions throughout the model')
         ap.add_argument('--dropout', type=float, default=0.5, help='Dropout percentage')
         ap.add_argument('--lr', type=float, default=0.001, help='Learning rate')
-        ap.add_argument('--loss_margin', type=float, default=0.2, help='Hinge loss margin')
+        ap.add_argument('--loss_margin', type=float, default=0.2, help='Margin for pairwise loss')
         ap.add_argument('--batch_size', type=int, default=32, help='Batch size')
