@@ -32,7 +32,7 @@ def main():
         ct = Counter()
         for s in tqdm(chain(fp['queries'], fp['docs']), total=num_items):
             ct.update(nltk.word_tokenize(s))
-        vocab = Vocab(ct, args.max_size, vectors=args.vectors, vectors_cache=args.cache, unk_init=torch.normal)
+        vocab = Vocab(ct, args.max_size, vectors=args.vectors, vectors_cache=args.cache, unk_init=torch.nn.init.normal_)
 
     print(f'writing {args.out_file}...')
     with open(args.out_file, 'wb') as fp:
